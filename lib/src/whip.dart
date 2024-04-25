@@ -55,7 +55,7 @@ class WHIP {
 
       if (state == RTCIceConnectionState.RTCIceConnectionStateFailed) {
         lastError = "Connection Error RTCIceConnectionStateFailed";
-        this.state = WhipState.kFailure;
+        setState(WhipState.kFailure);
       }
     };
     pc!.onTrack = (RTCTrackEvent event) => onTrack?.call(event);
