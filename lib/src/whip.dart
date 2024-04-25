@@ -54,7 +54,8 @@ class WHIP {
       print('state: ${state.toString()}');
 
       if (state == RTCIceConnectionState.RTCIceConnectionStateFailed) {
-        lastError = "Connection Error ";
+        lastError = "Connection Error RTCIceConnectionStateFailed";
+        this.state = WhipState.kFailure;
         throw Exception('RTCIceConnectionStateFailed');
       }
     };
