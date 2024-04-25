@@ -28,10 +28,14 @@ class WHIP {
   String? resourceURL;
   Map<String, String>? headers = {};
   String? videoCodec;
+
   WHIP({required this.url, this.headers});
 
-  Future<void> initlize(
-      {required WhipMode mode, MediaStream? stream, String? videoCodec}) async {
+  Future<void> initlize({
+    required WhipMode mode,
+    MediaStream? stream,
+    String? videoCodec,
+  }) async {
     initHttpClient();
     if (pc != null) {
       return;
@@ -55,22 +59,17 @@ class WHIP {
         stream?.getTracks().forEach((track) async {
           await pc!.addTransceiver(
               track: track,
-              kind: track.kind == 'audio'
-                  ? RTCRtpMediaType.RTCRtpMediaTypeAudio
-                  : RTCRtpMediaType.RTCRtpMediaTypeVideo,
-              init: RTCRtpTransceiverInit(
-                  direction: TransceiverDirection.SendOnly, streams: [stream]));
+              kind: track.kind == 'audio' ? RTCRtpMediaType.RTCRtpMediaTypeAudio : RTCRtpMediaType.RTCRtpMediaTypeVideo,
+              init: RTCRtpTransceiverInit(direction: TransceiverDirection.SendOnly, streams: [stream]));
         });
         break;
       case WhipMode.kReceive:
         await pc!.addTransceiver(
             kind: RTCRtpMediaType.RTCRtpMediaTypeAudio,
-            init: RTCRtpTransceiverInit(
-                direction: TransceiverDirection.RecvOnly));
+            init: RTCRtpTransceiverInit(direction: TransceiverDirection.RecvOnly));
         await pc!.addTransceiver(
             kind: RTCRtpMediaType.RTCRtpMediaTypeVideo,
-            init: RTCRtpTransceiverInit(
-                direction: TransceiverDirection.RecvOnly));
+            init: RTCRtpTransceiverInit(direction: TransceiverDirection.RecvOnly));
         break;
     }
     log.debug('Initlize whip connection: mode = $mode, stream = ${stream?.id}');
@@ -92,11 +91,12 @@ class WHIP {
       final sdp = offer!.sdp;
       log.debug('Sending offer: $sdp');
       var respose = await httpPost(Uri.parse(url),
-          headers: {
-            'Content-Type': 'application/sdp',
-            if (headers != null) ...headers!
-          },
-          body: sdp);
+          headers: {'Content-Type': 'application/sdp', if (headers != null) ...headers!}, body: sdp);
+
+      if (respose.statusCode == 400){
+        lastError = 'Error on IceCandidates 400';
+        throw Exception('Failed to reconnect');
+      }
 
       if (respose.statusCode != 200 && respose.statusCode != 201) {
         throw Exception('Failed to send offer: ${respose.statusCode}');
@@ -152,10 +152,7 @@ class WHIP {
     log.debug('Sending candidate: ${candidate.toMap().toString()}');
     try {
       var respose = await httpPatch(Uri.parse(resourceURL!),
-          headers: {
-            'Content-Type': 'application/trickle-ice-sdpfrag',
-            if (headers != null) ...headers!
-          },
+          headers: {'Content-Type': 'application/trickle-ice-sdpfrag', if (headers != null) ...headers!},
           body: candidate.candidate);
       log.debug('Received Patch response: ${respose.body}');
       // TODO(cloudwebrtc): Add remote candidate to local pc.
@@ -171,22 +168,17 @@ class WHIP {
     state = newState;
   }
 
-  void setPreferredCodec(RTCSessionDescription description,
-      {String audioCodec = 'opus', String videoCodec = 'vp8'}) {
+  void setPreferredCodec(RTCSessionDescription description, {String audioCodec = 'opus', String videoCodec = 'vp8'}) {
     var capSel = CodecCapabilitySelector(description.sdp!);
     var acaps = capSel.getCapabilities('audio');
     if (acaps != null) {
-      acaps.codecs = acaps.codecs
-          .where((e) => (e['codec'] as String).toLowerCase() == audioCodec)
-          .toList();
+      acaps.codecs = acaps.codecs.where((e) => (e['codec'] as String).toLowerCase() == audioCodec).toList();
       acaps.setCodecPreferences('audio', acaps.codecs);
       capSel.setCapabilities(acaps);
     }
     var vcaps = capSel.getCapabilities('video');
     if (vcaps != null) {
-      vcaps.codecs = vcaps.codecs
-          .where((e) => (e['codec'] as String).toLowerCase() == videoCodec)
-          .toList();
+      vcaps.codecs = vcaps.codecs.where((e) => (e['codec'] as String).toLowerCase() == videoCodec).toList();
       vcaps.setCodecPreferences('video', vcaps.codecs);
       capSel.setCapabilities(vcaps);
     }
