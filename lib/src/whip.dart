@@ -52,6 +52,11 @@ class WHIP {
     pc?.onIceCandidate = onicecandidate;
     pc?.onIceConnectionState = (state) {
       print('state: ${state.toString()}');
+
+      if (state == RTCIceConnectionState.RTCIceConnectionStateFailed) {
+        lastError = "Connection Error ";
+        throw Exception('RTCIceConnectionStateFailed');
+      }
     };
     pc!.onTrack = (RTCTrackEvent event) => onTrack?.call(event);
     switch (mode) {
@@ -93,7 +98,7 @@ class WHIP {
       var respose = await httpPost(Uri.parse(url),
           headers: {'Content-Type': 'application/sdp', if (headers != null) ...headers!}, body: sdp);
 
-      if (respose.statusCode == 400){
+      if (respose.statusCode == 400) {
         lastError = 'Error on IceCandidates 400';
         throw Exception('Failed to reconnect');
       }
