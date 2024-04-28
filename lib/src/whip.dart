@@ -134,7 +134,7 @@ class WHIP {
     }
   }
 
-  void close() async {
+  Future<void> close() async {
     if (state == WhipState.kDisconnected) {
       return;
     }
